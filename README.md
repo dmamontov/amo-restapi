@@ -1,7 +1,7 @@
-PHPClient to work with through AmoCMS Rest API
+PHPClient to work with through AmoCRM Rest API
 ==============================================
 
-PHPClient to work with through  [AmoCMS Rest API](https://developers.amocrm.ru/rest_api/).
+PHPClient to work with through  [AmoCRM Rest API](https://developers.amocrm.ru/rest_api/).
 
 ## Requirements
 * PHP version >5.0
