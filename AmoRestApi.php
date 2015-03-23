@@ -554,7 +554,10 @@ class AmoRestApi
     protected function curlRequest($url, $method = 'GET', $parameters = null, $headers = null, $timeout = 30)
     {
         $cookie = (version_compare(PHP_VERSION, '5.3.6', '>=') ? __DIR__ : dirname(__FILE__)) . '/cookie.txt';
-
+        if ($method == self::METHOD_GET && is_null($parameters) == false) {
+            $url .= "?$parameters";
+        }
+        
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_USERAGENT, 'amoCRM-API-client/1.0');
         curl_setopt($ch, CURLOPT_URL, $url);
