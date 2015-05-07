@@ -90,6 +90,11 @@ class AmoRestApi
      */
     protected $subDomain;
 
+	/**
+	 * Curl instance
+	 */
+	protected $curl;
+
     /**
      * Class constructor
      * @param string $subDomain
@@ -553,38 +558,38 @@ class AmoRestApi
      */
     protected function curlRequest($url, $method = 'GET', $parameters = null, $headers = null, $timeout = 30)
     {
-        $cookie = (version_compare(PHP_VERSION, '5.3.6', '>=') ? __DIR__ : dirname(__FILE__)) . '/cookie.txt';
         if ($method == self::METHOD_GET && is_null($parameters) == false) {
             $url .= "?$parameters";
         }
-        
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_USERAGENT, 'amoCRM-API-client/1.0');
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_FAILONERROR, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, $timeout);
-        curl_setopt($ch, CURLOPT_HEADER, false);
-        curl_setopt($ch ,CURLOPT_COOKIEFILE, $cookie);
-        curl_setopt($ch ,CURLOPT_COOKIEJAR, $cookie);
+
+	    if ( ! $this->curl ) {
+		    $this->curl = curl_init();
+	    }
+        curl_setopt($this->curl, CURLOPT_USERAGENT, 'amoCRM-API-client/1.0');
+        curl_setopt($this->curl, CURLOPT_URL, $url);
+        curl_setopt($this->curl, CURLOPT_FAILONERROR, false);
+        curl_setopt($this->curl, CURLOPT_SSL_VERIFYHOST, 0);
+        curl_setopt($this->curl, CURLOPT_SSL_VERIFYPEER, 0);
+        curl_setopt($this->curl, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($this->curl, CURLOPT_TIMEOUT, $timeout);
+        curl_setopt($this->curl, CURLOPT_HEADER, false);
+        curl_setopt($this->curl ,CURLOPT_COOKIEFILE, '-');
+        curl_setopt($this->curl ,CURLOPT_COOKIEJAR, '-');
 
         if (is_null($headers) === false) {
-            curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+            curl_setopt($this->curl, CURLOPT_HTTPHEADER, $headers);
         }
 
         if ($method == self::METHOD_POST && is_null($parameters) === false) {
-            curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($parameters));
+            curl_setopt($this->curl, CURLOPT_POST, true);
+            curl_setopt($this->curl, CURLOPT_POSTFIELDS, http_build_query($parameters));
         }
 
-        $response = curl_exec($ch);
-        $statusCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $response = curl_exec($this->curl);
+        $statusCode = curl_getinfo($this->curl, CURLINFO_HTTP_CODE);
 
-        $errno = curl_errno($ch);
-        $error = curl_error($ch);
-        curl_close($ch);
+        $errno = curl_errno($this->curl);
+        $error = curl_error($this->curl);
 
         if ($errno) {
             throw new Exception($error, $errno);
@@ -598,4 +603,13 @@ class AmoRestApi
 
         return isset($result['response']) && count($result['response']) == 0 ? true : $result['response'];
     }
+
+	/**
+	 * Do some actions when instance destroyed
+	 */
+	function __destruct() {
+		//Close curl session
+		curl_close($this->curl);
+	}
+
 }
