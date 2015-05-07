@@ -145,7 +145,7 @@ class AmoRestApi
             return false;
         }
 
-	    //Organize proper request array as per https://developers.amocrm.ru/examples/
+	    //Prepare request
 	    $request['request']['contacts'] = $contacts;
 	    $request_json = json_encode( $request );
 
