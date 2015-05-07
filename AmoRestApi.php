@@ -145,7 +145,11 @@ class AmoRestApi
             return false;
         }
 
-        return $this->curlRequest(sprintf(self::URL . 'contacts/set', $this->subDomain), self::METHOD_POST, $contacts);
+	    //Organize proper request array as per https://developers.amocrm.ru/examples/
+	    $request['request']['contacts'] = $contacts;
+	    $request_json = json_encode( $request );
+
+        return $this->curlRequest(sprintf(self::URL . 'contacts/set', $this->subDomain), self::METHOD_POST, $request_json);
     }
 
     /**
@@ -582,7 +586,19 @@ class AmoRestApi
 
         if ($method == self::METHOD_POST && is_null($parameters) === false) {
             curl_setopt($this->curl, CURLOPT_POST, true);
-            curl_setopt($this->curl, CURLOPT_POSTFIELDS, http_build_query($parameters));
+
+	        if ( ! $this->isJson( $parameters ) ) {
+		        //Build query string if paramenters not in JSON
+		        $parameters = http_build_query( $parameters );
+	        } else {
+		        //Add appropriate header if parameters in JSON
+		        curl_setopt($this->curl,CURLOPT_CUSTOMREQUEST,'POST');
+		        curl_setopt($this->curl,CURLOPT_HTTPHEADER,array('Content-Type: application/json'));
+		        curl_setopt($this->curl,CURLOPT_SSL_VERIFYPEER,0);
+		        curl_setopt($this->curl,CURLOPT_SSL_VERIFYHOST,0);
+	        }
+
+            curl_setopt($this->curl, CURLOPT_POSTFIELDS, $parameters);
         }
 
         $response = curl_exec($this->curl);
@@ -603,6 +619,14 @@ class AmoRestApi
 
         return isset($result['response']) && count($result['response']) == 0 ? true : $result['response'];
     }
+
+	function isJson($string) {
+		if ( ! is_string( $string ) ) {
+			return false;
+		}
+		json_decode($string);
+		return (json_last_error() == JSON_ERROR_NONE);
+	}
 
 	/**
 	 * Do some actions when instance destroyed
