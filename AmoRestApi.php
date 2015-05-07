@@ -663,6 +663,14 @@ class AmoRestApi
 		return $this->custom_fields;
 	}
 
+	/**
+	 * Getting custom fields id
+	 *
+	 * @param        $field_name
+	 * @param string $field_section (possible values contacts or companies)
+	 *
+	 * @return mixed
+	 */
 	public function getCustomFieldID( $field_name, $field_section = 'contacts' ) {
 		$custom_fields = $this->getCustomFields();
 		if ( is_array( $custom_fields ) && isset( $custom_fields[$field_section] ) && is_array( $custom_fields[$field_section] ) ) {
