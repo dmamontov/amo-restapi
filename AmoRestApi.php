@@ -95,6 +95,16 @@ class AmoRestApi
 	 */
 	protected $curl;
 
+	/**
+	 * Current account info
+	 */
+	protected $account_info;
+
+	/**
+	 * Accounts custom fields
+	 */
+	protected $custom_fields;
+
     /**
      * Class constructor
      * @param string $subDomain
@@ -122,14 +132,25 @@ class AmoRestApi
     }
 
     /**
-     * Get Accounts
+     * Get Account Info
      * @return array
      * @access public
      * @final
      */
-    final public function getAccounts()
+    final public function getAccountInfo()
     {
-        return $this->curlRequest(sprintf(self::URL . 'accounts/current', $this->subDomain));
+	    if ( $this->account_info ) {
+		    return $this->account_info;
+	    }
+
+	    $request = $this->curlRequest(sprintf(self::URL . 'accounts/current', $this->subDomain));
+
+	    if ( is_array( $request ) && isset( $request['account'] ) ) {
+		    $this->account_info = $request['account'];
+		    return $this->account_info;
+	    } else {
+		    return false;
+	    }
     }
 
     /**
@@ -149,7 +170,9 @@ class AmoRestApi
 	    $request['request']['contacts'] = $contacts;
 	    $request_json = json_encode( $request );
 
-        return $this->curlRequest(sprintf(self::URL . 'contacts/set', $this->subDomain), self::METHOD_POST, $request_json);
+	    $headers = array('Content-Type: application/json');
+
+        return $this->curlRequest(sprintf(self::URL . 'contacts/set', $this->subDomain), self::METHOD_POST, $request_json, $headers);
     }
 
     /**
@@ -566,9 +589,12 @@ class AmoRestApi
             $url .= "?$parameters";
         }
 
+	    // Get curl handler or initiate it
 	    if ( ! $this->curl ) {
 		    $this->curl = curl_init();
 	    }
+
+	    //Set general arguments
         curl_setopt($this->curl, CURLOPT_USERAGENT, 'amoCRM-API-client/1.0');
         curl_setopt($this->curl, CURLOPT_URL, $url);
         curl_setopt($this->curl, CURLOPT_FAILONERROR, false);
@@ -580,6 +606,10 @@ class AmoRestApi
         curl_setopt($this->curl ,CURLOPT_COOKIEFILE, '-');
         curl_setopt($this->curl ,CURLOPT_COOKIEJAR, '-');
 
+	    // Reset some arguments, in order to avoid use some from previous request
+	    curl_setopt($this->curl ,CURLOPT_POST, false);
+	    curl_setopt($this->curl,CURLOPT_HTTPHEADER, false);
+
         if (is_null($headers) === false) {
             curl_setopt($this->curl, CURLOPT_HTTPHEADER, $headers);
         }
@@ -587,15 +617,9 @@ class AmoRestApi
         if ($method == self::METHOD_POST && is_null($parameters) === false) {
             curl_setopt($this->curl, CURLOPT_POST, true);
 
+	        //Encode parameters if them already not encoded in json
 	        if ( ! $this->isJson( $parameters ) ) {
-		        //Build query string if paramenters not in JSON
 		        $parameters = http_build_query( $parameters );
-	        } else {
-		        //Add appropriate header if parameters in JSON
-		        curl_setopt($this->curl,CURLOPT_CUSTOMREQUEST,'POST');
-		        curl_setopt($this->curl,CURLOPT_HTTPHEADER,array('Content-Type: application/json'));
-		        curl_setopt($this->curl,CURLOPT_SSL_VERIFYPEER,0);
-		        curl_setopt($this->curl,CURLOPT_SSL_VERIFYHOST,0);
 	        }
 
             curl_setopt($this->curl, CURLOPT_POSTFIELDS, $parameters);
@@ -620,12 +644,34 @@ class AmoRestApi
         return isset($result['response']) && count($result['response']) == 0 ? true : $result['response'];
     }
 
-	function isJson($string) {
+	protected function isJson($string) {
 		if ( ! is_string( $string ) ) {
 			return false;
 		}
 		json_decode($string);
 		return (json_last_error() == JSON_ERROR_NONE);
+	}
+
+	protected function getCustomFields() {
+		if ( $this->custom_fields ) {
+			return $this->custom_fields;
+		}
+
+		$account = $this->getAccountInfo();
+		$this->custom_fields = $account['custom_fields'];
+
+		return $this->custom_fields;
+	}
+
+	public function getCustomFieldID( $field_name, $field_section = 'contacts' ) {
+		$custom_fields = $this->getCustomFields();
+		if ( is_array( $custom_fields ) && isset( $custom_fields[$field_section] ) && is_array( $custom_fields[$field_section] ) ) {
+			foreach ( $custom_fields[$field_section] as $custom_field_details ) {
+				if ( $field_name === $custom_field_details['code'] ) {
+					return $custom_field_details['id'];
+				}
+			}
+		}
 	}
 
 	/**
