@@ -286,7 +286,25 @@ class AmoRestApi
             return false;
         }
 
-        return $this->curlRequest(sprintf(self::URL . 'leads/set', $this->subDomain), self::METHOD_POST, $leads);
+	    //Prepare request
+	    $request['request']['leads'] = $leads;
+	    $request_json = json_encode( $request );
+	    $headers = array('Content-Type: application/json');
+
+	    //Do request
+	    $response = $this->curlRequest(sprintf(self::URL . 'leads/set', $this->subDomain), self::METHOD_POST,  $request_json, $headers);
+
+	    //Parse leads ids from response and return
+	    if ( isset( $response['leads']['add'] ) && is_array( $response['leads']['add'] ) ) {
+		    $added_leads_ids = array();
+		    foreach ( $response['leads']['add'] as $lead_info ) {
+			    $added_leads_ids[] = $lead_info['id'];
+		    }
+
+		    return $added_leads_ids;
+	    } else {
+		    return false;
+	    }
     }
 
     /**
