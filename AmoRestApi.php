@@ -105,6 +105,11 @@ class AmoRestApi
 	 */
 	protected $custom_fields;
 
+	/**
+	 * Accounts leads statues info
+	 */
+	protected $leads_statuses;
+
     /**
      * Class constructor
      * @param string $subDomain
@@ -294,14 +299,17 @@ class AmoRestApi
 	    //Do request
 	    $response = $this->curlRequest(sprintf(self::URL . 'leads/set', $this->subDomain), self::METHOD_POST,  $request_json, $headers);
 
-	    //Parse leads ids from response and return
+	    //Parse leads ids from response and return along with last modified time
 	    if ( isset( $response['leads']['add'] ) && is_array( $response['leads']['add'] ) ) {
-		    $added_leads_ids = array();
-		    foreach ( $response['leads']['add'] as $lead_info ) {
-			    $added_leads_ids[] = $lead_info['id'];
+		    $added_leads = array();
+		    foreach ( $response['leads']['add'] as $key => $lead_info ) {
+			    $added_leads[ $key ]['id']            = $lead_info['id'];
+			    $added_leads[ $key ]['last_modified'] = $response['server_time'];
 		    }
 
-		    return $added_leads_ids;
+		    return $added_leads;
+	    } elseif ( isset( $response['leads']['update'] ) ) {
+		    return $response;
 	    } else {
 		    return false;
 	    }
@@ -662,6 +670,13 @@ class AmoRestApi
         return isset($result['response']) && count($result['response']) == 0 ? true : $result['response'];
     }
 
+	/**
+	 * Check if passed argument is JSON
+	 *
+	 * @param $string
+	 *
+	 * @return bool
+	 */
 	protected function isJson($string) {
 		if ( ! is_string( $string ) ) {
 			return false;
@@ -670,6 +685,10 @@ class AmoRestApi
 		return (json_last_error() == JSON_ERROR_NONE);
 	}
 
+	/**
+	 * Get accounts custom fields and store in self::custom_fields
+	 * @return mixed
+	 */
 	protected function getCustomFields() {
 		if ( $this->custom_fields ) {
 			return $this->custom_fields;
@@ -695,6 +714,39 @@ class AmoRestApi
 			foreach ( $custom_fields[$field_section] as $custom_field_details ) {
 				if ( $field_name === $custom_field_details['code'] ) {
 					return $custom_field_details['id'];
+				}
+			}
+		}
+	}
+
+	/**
+	 * Get list of possible leads statuses
+	 * @return mixed
+	 */
+	protected function getLeadsStatuses() {
+		if ( $this->leads_statuses ) {
+			return $this->leads_statuses;
+		}
+
+		$account = $this->getAccountInfo();
+		$this->leads_statuses = $account['leads_statuses'];
+
+		return $this->leads_statuses;
+	}
+
+	/**
+	 * Get lead status id by name
+	 *
+	 * @param $name
+	 *
+	 * @return mixed
+	 */
+	public function getLeadStatusID( $name ) {
+		$leads_statuses = $this->getLeadsStatuses();
+		if ( is_array( $leads_statuses ) ) {
+			foreach ( $leads_statuses as $leads_status ) {
+				if ( $name === $leads_status['name'] ) {
+					return $leads_status['id'];
 				}
 			}
 		}
