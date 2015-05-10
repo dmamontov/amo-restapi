@@ -90,6 +90,26 @@ class AmoRestApi
      */
     protected $subDomain;
 
+	/**
+	 * Curl instance
+	 */
+	protected $curl;
+
+	/**
+	 * Current account info
+	 */
+	protected $account_info;
+
+	/**
+	 * Accounts custom fields
+	 */
+	protected $custom_fields;
+
+	/**
+	 * Accounts leads statues info
+	 */
+	protected $leads_statuses;
+
     /**
      * Class constructor
      * @param string $subDomain
@@ -117,14 +137,25 @@ class AmoRestApi
     }
 
     /**
-     * Get Accounts
+     * Get Account Info
      * @return array
      * @access public
      * @final
      */
-    final public function getAccounts()
+    final public function getAccountInfo()
     {
-        return $this->curlRequest(sprintf(self::URL . 'accounts/current', $this->subDomain));
+	    if ( $this->account_info ) {
+		    return $this->account_info;
+	    }
+
+	    $request = $this->curlRequest(sprintf(self::URL . 'accounts/current', $this->subDomain));
+
+	    if ( is_array( $request ) && isset( $request['account'] ) ) {
+		    $this->account_info = $request['account'];
+		    return $this->account_info;
+	    } else {
+		    return false;
+	    }
     }
 
     /**
@@ -140,7 +171,13 @@ class AmoRestApi
             return false;
         }
 
-        return $this->curlRequest(sprintf(self::URL . 'contacts/set', $this->subDomain), self::METHOD_POST, $contacts);
+	    //Prepare request
+	    $request['request']['contacts'] = $contacts;
+	    $request_json = json_encode( $request );
+
+	    $headers = array('Content-Type: application/json');
+
+        return $this->curlRequest(sprintf(self::URL . 'contacts/set', $this->subDomain), self::METHOD_POST, $request_json, $headers);
     }
 
     /**
@@ -254,7 +291,28 @@ class AmoRestApi
             return false;
         }
 
-        return $this->curlRequest(sprintf(self::URL . 'leads/set', $this->subDomain), self::METHOD_POST, $leads);
+	    //Prepare request
+	    $request['request']['leads'] = $leads;
+	    $request_json = json_encode( $request );
+	    $headers = array('Content-Type: application/json');
+
+	    //Do request
+	    $response = $this->curlRequest(sprintf(self::URL . 'leads/set', $this->subDomain), self::METHOD_POST,  $request_json, $headers);
+
+	    //Parse leads ids from response and return along with last modified time
+	    if ( isset( $response['leads']['add'] ) && is_array( $response['leads']['add'] ) ) {
+		    $added_leads = array();
+		    foreach ( $response['leads']['add'] as $key => $lead_info ) {
+			    $added_leads[ $key ]['id']            = $lead_info['id'];
+			    $added_leads[ $key ]['last_modified'] = $response['server_time'];
+		    }
+
+		    return $added_leads;
+	    } elseif ( isset( $response['leads']['update'] ) ) {
+		    return $response;
+	    } else {
+		    return false;
+	    }
     }
 
     /**
@@ -553,38 +611,51 @@ class AmoRestApi
      */
     protected function curlRequest($url, $method = 'GET', $parameters = null, $headers = null, $timeout = 30)
     {
-        $cookie = (version_compare(PHP_VERSION, '5.3.6', '>=') ? __DIR__ : dirname(__FILE__)) . '/cookie.txt';
         if ($method == self::METHOD_GET && is_null($parameters) == false) {
             $url .= "?$parameters";
         }
-        
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_USERAGENT, 'amoCRM-API-client/1.0');
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_FAILONERROR, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, $timeout);
-        curl_setopt($ch, CURLOPT_HEADER, false);
-        curl_setopt($ch ,CURLOPT_COOKIEFILE, $cookie);
-        curl_setopt($ch ,CURLOPT_COOKIEJAR, $cookie);
+
+	    // Get curl handler or initiate it
+	    if ( ! $this->curl ) {
+		    $this->curl = curl_init();
+	    }
+
+	    //Set general arguments
+        curl_setopt($this->curl, CURLOPT_USERAGENT, 'amoCRM-API-client/1.0');
+        curl_setopt($this->curl, CURLOPT_URL, $url);
+        curl_setopt($this->curl, CURLOPT_FAILONERROR, false);
+        curl_setopt($this->curl, CURLOPT_SSL_VERIFYHOST, 0);
+        curl_setopt($this->curl, CURLOPT_SSL_VERIFYPEER, 0);
+        curl_setopt($this->curl, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($this->curl, CURLOPT_TIMEOUT, $timeout);
+        curl_setopt($this->curl, CURLOPT_HEADER, false);
+        curl_setopt($this->curl ,CURLOPT_COOKIEFILE, '-');
+        curl_setopt($this->curl ,CURLOPT_COOKIEJAR, '-');
+
+	    // Reset some arguments, in order to avoid use some from previous request
+	    curl_setopt($this->curl ,CURLOPT_POST, false);
+	    curl_setopt($this->curl,CURLOPT_HTTPHEADER, false);
 
         if (is_null($headers) === false) {
-            curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+            curl_setopt($this->curl, CURLOPT_HTTPHEADER, $headers);
         }
 
         if ($method == self::METHOD_POST && is_null($parameters) === false) {
-            curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($parameters));
+            curl_setopt($this->curl, CURLOPT_POST, true);
+
+	        //Encode parameters if them already not encoded in json
+	        if ( ! $this->isJson( $parameters ) ) {
+		        $parameters = http_build_query( $parameters );
+	        }
+
+            curl_setopt($this->curl, CURLOPT_POSTFIELDS, $parameters);
         }
 
-        $response = curl_exec($ch);
-        $statusCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $response = curl_exec($this->curl);
+        $statusCode = curl_getinfo($this->curl, CURLINFO_HTTP_CODE);
 
-        $errno = curl_errno($ch);
-        $error = curl_error($ch);
-        curl_close($ch);
+        $errno = curl_errno($this->curl);
+        $error = curl_error($this->curl);
 
         if ($errno) {
             throw new Exception($error, $errno);
@@ -598,4 +669,95 @@ class AmoRestApi
 
         return isset($result['response']) && count($result['response']) == 0 ? true : $result['response'];
     }
+
+	/**
+	 * Check if passed argument is JSON
+	 *
+	 * @param $string
+	 *
+	 * @return bool
+	 */
+	protected function isJson($string) {
+		if ( ! is_string( $string ) ) {
+			return false;
+		}
+		json_decode($string);
+		return (json_last_error() == JSON_ERROR_NONE);
+	}
+
+	/**
+	 * Get accounts custom fields and store in self::custom_fields
+	 * @return mixed
+	 */
+	protected function getCustomFields() {
+		if ( $this->custom_fields ) {
+			return $this->custom_fields;
+		}
+
+		$account = $this->getAccountInfo();
+		$this->custom_fields = $account['custom_fields'];
+
+		return $this->custom_fields;
+	}
+
+	/**
+	 * Getting custom fields id
+	 *
+	 * @param        $field_name
+	 * @param string $field_section (possible values contacts or companies)
+	 *
+	 * @return mixed
+	 */
+	public function getCustomFieldID( $field_name, $field_section = 'contacts' ) {
+		$custom_fields = $this->getCustomFields();
+		if ( is_array( $custom_fields ) && isset( $custom_fields[$field_section] ) && is_array( $custom_fields[$field_section] ) ) {
+			foreach ( $custom_fields[$field_section] as $custom_field_details ) {
+				if ( $field_name === $custom_field_details['code'] ) {
+					return $custom_field_details['id'];
+				}
+			}
+		}
+	}
+
+	/**
+	 * Get list of possible leads statuses
+	 * @return mixed
+	 */
+	protected function getLeadsStatuses() {
+		if ( $this->leads_statuses ) {
+			return $this->leads_statuses;
+		}
+
+		$account = $this->getAccountInfo();
+		$this->leads_statuses = $account['leads_statuses'];
+
+		return $this->leads_statuses;
+	}
+
+	/**
+	 * Get lead status id by name
+	 *
+	 * @param $name
+	 *
+	 * @return mixed
+	 */
+	public function getLeadStatusID( $name ) {
+		$leads_statuses = $this->getLeadsStatuses();
+		if ( is_array( $leads_statuses ) ) {
+			foreach ( $leads_statuses as $leads_status ) {
+				if ( $name === $leads_status['name'] ) {
+					return $leads_status['id'];
+				}
+			}
+		}
+	}
+
+	/**
+	 * Do some actions when instance destroyed
+	 */
+	function __destruct() {
+		//Close curl session
+		curl_close($this->curl);
+	}
+
 }
