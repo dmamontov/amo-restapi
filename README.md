@@ -2,10 +2,14 @@
 [![License](https://poser.pugx.org/dmamontov/amo-restapi/license.svg)](https://packagist.org/packages/dmamontov/amo-restapi)
 [![Total Downloads](https://poser.pugx.org/dmamontov/amo-restapi/downloads.svg)](https://packagist.org/packages/dmamontov/amo-restapi)
 
-PHPClient to work with through AmoCRM Rest API
-==============================================
+AmoCRM API Client
+=================
 
-PHPClient to work with through  [AmoCRM Rest API](https://developers.amocrm.ru/rest_api/).
+This class can Manage accounts of AmoCRM using its REST API.
+
+It can obtain an authorization token for a given account, so it can send HTTP requests to the [AmoCRM Rest API](https://developers.amocrm.ru/rest_api/) in order to perform several types of operations.
+
+Currently it can the current accounts, set and get contacts, contact links, leads, companies, tasks, notes and fields.
 
 ## Requirements
 * PHP version >5.0
