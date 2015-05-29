@@ -628,10 +628,11 @@ class AmoRestApi
 
         // Reset some arguments, in order to avoid use some from previous request
         curl_setopt($this->curl, CURLOPT_POST, false);
-        curl_setopt($this->curl, CURLOPT_HTTPHEADER, false);
 
-        if (is_null($headers) === false) {
+        if (is_null($headers) === false && count($headers) > 0) {
             curl_setopt($this->curl, CURLOPT_HTTPHEADER, $headers);
+        } else {
+            curl_setopt($this->curl, CURLOPT_HTTPHEADER, false);
         }
 
         if ($method == self::METHOD_POST && is_null($parameters) === false) {
