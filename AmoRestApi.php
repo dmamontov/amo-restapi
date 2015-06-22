@@ -173,11 +173,11 @@ class AmoRestApi
 
         //Prepare request
         $request['request']['contacts'] = $contacts;
-        $request_json = json_encode($request);
+        $requestJson = json_encode($request);
 
         $headers = array('Content-Type: application/json');
 
-        return $this->curlRequest(sprintf(self::URL . 'contacts/set', $this->subDomain), self::METHOD_POST, $request_json, $headers);
+        return $this->curlRequest(sprintf(self::URL . 'contacts/set', $this->subDomain), self::METHOD_POST, $requestJson, $headers);
     }
 
     /**
@@ -291,11 +291,11 @@ class AmoRestApi
 
         //Prepare request
         $request['request']['leads'] = $leads;
-        $request_json = json_encode($request);
+        $requestJson = json_encode($request);
         $headers = array('Content-Type: application/json');
 
         //Do request
-        $response = $this->curlRequest(sprintf(self::URL . 'leads/set', $this->subDomain), self::METHOD_POST,  $request_json, $headers);
+        $response = $this->curlRequest(sprintf(self::URL . 'leads/set', $this->subDomain), self::METHOD_POST,  $requestJson, $headers);
 
         //Parse leads ids from response and return along with last modified time
         if (isset($response['leads']['add']) && is_array($response['leads']['add'])) {
@@ -452,9 +452,9 @@ class AmoRestApi
 
         //Prepare request
         $request['request']['tasks'] = $tasks;
-        $request_json = json_encode($request);
+        $requestJson = json_encode($request);
         $headers = array('Content-Type: application/json');
-        return $this->curlRequest(sprintf(self::URL . 'tasks/set', $this->subDomain), self::METHOD_POST, $request_json, $headers);
+        return $this->curlRequest(sprintf(self::URL . 'tasks/set', $this->subDomain), self::METHOD_POST, $requestJson, $headers);
     }
 
     /**
