@@ -450,7 +450,11 @@ class AmoRestApi
             return false;
         }
 
-        return $this->curlRequest(sprintf(self::URL . 'tasks/set', $this->subDomain), self::METHOD_POST, $tasks);
+        //Prepare request
+        $request['request']['tasks'] = $tasks;
+        $request_json = json_encode($request);
+        $headers = array('Content-Type: application/json');
+        return $this->curlRequest(sprintf(self::URL . 'tasks/set', $this->subDomain), self::METHOD_POST, $request_json, $headers);
     }
 
     /**
@@ -632,7 +636,7 @@ class AmoRestApi
         if (is_null($headers) === false && count($headers) > 0) {
             curl_setopt($this->curl, CURLOPT_HTTPHEADER, $headers);
         } else {
-            curl_setopt($this->curl, CURLOPT_HTTPHEADER, false);
+            curl_setopt($this->curl, CURLOPT_HTTPHEADER, array());
         }
 
         if ($method == self::METHOD_POST && is_null($parameters) === false) {
