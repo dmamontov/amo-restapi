@@ -46,9 +46,9 @@
  * @author    Dmitry Mamontov <d.slonyara@gmail.com>
  * @copyright 2015 Dmitry Mamontov <d.slonyara@gmail.com>
  * @license   http://www.opensource.org/licenses/BSD-3-Clause  The BSD 3-Clause License
- * @version   Release: 1.0.1
+ * @version   Release: 1.0.2
  * @link      https://github.com/dmamontov/amo-restapi/
- * @since     Class available since Release 1.0.1
+ * @since     Class available since Release 1.0.2
  */
 
 class AmoRestApi
@@ -575,6 +575,10 @@ class AmoRestApi
             $parameters['element_id'] = $element_id;
         }
 
+        if (is_null($type) === false) {
+            $parameters['type'] = $type;
+        }
+
         return $this->curlRequest(
             sprintf(self::URL . 'notes/list', $this->subDomain),
             self::METHOD_GET,
@@ -607,7 +611,7 @@ class AmoRestApi
      * @return mixed
      * @access protected
      */
-    protected function curlRequest($url, $method = 'GET', $parameters = null, $headers = null, $timeout = 30)
+    protected function curlRequest($url, $method = 'GET', $parameters = null, $headers = null, $cookie = '/tmp/cookie.txt', $timeout = 30)
     {
         if ($method == self::METHOD_GET && is_null($parameters) == false) {
             $url .= "?$parameters";
@@ -627,8 +631,8 @@ class AmoRestApi
         curl_setopt($this->curl, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($this->curl, CURLOPT_TIMEOUT, $timeout);
         curl_setopt($this->curl, CURLOPT_HEADER, false);
-        curl_setopt($this->curl, CURLOPT_COOKIEFILE, '-');
-        curl_setopt($this->curl, CURLOPT_COOKIEJAR, '-');
+        curl_setopt($this->curl, CURLOPT_COOKIEFILE, $cookie);
+        curl_setopt($this->curl, CURLOPT_COOKIEJAR, $cookie);
 
         // Reset some arguments, in order to avoid use some from previous request
         curl_setopt($this->curl, CURLOPT_POST, false);
@@ -694,7 +698,7 @@ class AmoRestApi
         }
 
         $account = $this->getAccountInfo();
-        $this->customFields = $account['customFields'];
+        $this->customFields = $account['custom_fields'];
 
         return $this->customFields;
     }
@@ -721,14 +725,14 @@ class AmoRestApi
      * Get list of possible leads statuses
      * @return mixed
      */
-    protected function getLeadsStatuses()
+    public function getLeadsStatuses()
     {
         if ($this->leadsStatuses) {
             return $this->leadsStatuses;
         }
 
         $account = $this->getAccountInfo();
-        $this->leadsStatuses = $account['leadsStatuses'];
+        $this->leadsStatuses = $account['leads_statuses'];
 
         return $this->leadsStatuses;
     }
