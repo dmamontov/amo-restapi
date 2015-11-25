@@ -527,7 +527,10 @@ class AmoRestApi
             return false;
         }
 
-        return $this->curlRequest(sprintf(self::URL . 'notes/set', $this->subDomain), self::METHOD_POST, $notes);
+        $request['request']['notes'] = $notes;
+        $requestJson = json_encode($request);
+        $headers = array('Content-Type: application/json');
+        return $this->curlRequest(sprintf(self::URL . 'notes/set', $this->subDomain), self::METHOD_POST, $requestJson, $headers);
     }
 
     /**
