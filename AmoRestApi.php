@@ -92,21 +92,29 @@ class AmoRestApi
 
     /**
      * Curl instance
+     * @var resource
+     * @access private
      */
-    protected $curl;
+    private $curl;
 
     /**
      * Current account info
+     * @var array
+     * @access protected
      */
     protected $accountInfo;
 
     /**
      * Accounts custom fields
+     * @var array
+     * @access protected
      */
     protected $customFields;
 
     /**
      * Accounts leads statues info
+     * @var array
+     * @access protected
      */
     protected $leadsStatuses;
 
@@ -115,7 +123,7 @@ class AmoRestApi
      * @param string $subDomain
      * @param string $login
      * @param string $key
-     * @return void
+     * @throws Exception
      * @access public
      * @final
      */
@@ -131,7 +139,7 @@ class AmoRestApi
            array('USER_LOGIN' => $login, 'USER_HASH'  => $key)
        );
 
-        if ($auth['auth'] !== true) {
+        if (!array_key_exists('auth', $auth) || $auth['auth'] !== true) {
             throw new Exception('Authorization error.');
         }
     }
@@ -167,17 +175,16 @@ class AmoRestApi
      */
     final public function setContacts($contacts = null)
     {
-        if (is_null($contacts)) {
+        if (is_null($contacts) || empty($contacts)) {
             return false;
         }
 
-        //Prepare request
-        $request['request']['contacts'] = $contacts;
-        $requestJson = json_encode($request);
-
-        $headers = array('Content-Type: application/json');
-
-        return $this->curlRequest(sprintf(self::URL . 'contacts/set', $this->subDomain), self::METHOD_POST, $requestJson, $headers);
+        return $this->curlRequest(
+            sprintf(self::URL . 'contacts/set', $this->subDomain),
+            self::METHOD_POST,
+            json_encode(array('request' => array('contacts' => $contacts))),
+            array('Content-Type: application/json')
+        );
     }
 
     /**
@@ -234,7 +241,9 @@ class AmoRestApi
         return $this->curlRequest(
             sprintf(self::URL . 'contacts/list', $this->subDomain),
             self::METHOD_GET,
-            count($parameters) > 0 ? http_build_query($parameters) : null);
+            count($parameters) > 0 ? http_build_query($parameters) : null,
+            $headers
+        );
     }
 
     /**
@@ -273,7 +282,9 @@ class AmoRestApi
         return $this->curlRequest(
             sprintf(self::URL . 'contacts/links', $this->subDomain),
             self::METHOD_GET,
-            count($parameters) > 0 ? http_build_query($parameters) : null);
+            count($parameters) > 0 ? http_build_query($parameters) : null,
+            $headers
+        );
     }
 
     /**
@@ -285,32 +296,16 @@ class AmoRestApi
      */
     final public function setLeads($leads = null)
     {
-        if (is_null($leads)) {
+        if (is_null($leads) || empty($leads)) {
             return false;
         }
 
-        //Prepare request
-        $request['request']['leads'] = $leads;
-        $requestJson = json_encode($request);
-        $headers = array('Content-Type: application/json');
-
-        //Do request
-        $response = $this->curlRequest(sprintf(self::URL . 'leads/set', $this->subDomain), self::METHOD_POST,  $requestJson, $headers);
-
-        //Parse leads ids from response and return along with last modified time
-        if (isset($response['leads']['add']) && is_array($response['leads']['add'])) {
-            $added_leads = array();
-            foreach ($response['leads']['add'] as $key => $lead_info) {
-                $added_leads[ $key ]['id']            = $lead_info['id'];
-                $added_leads[ $key ]['last_modified'] = $response['server_time'];
-            }
-
-            return $added_leads;
-        } elseif (isset($response['leads']['update'])) {
-            return $response;
-        } else {
-            return false;
-        }
+        return $this->curlRequest(
+            sprintf(self::URL . 'leads/set', $this->subDomain),
+            self::METHOD_POST,
+            json_encode(array('request' => array('leads' => $leads))),
+            array('Content-Type: application/json')
+        );
     }
 
     /**
@@ -367,7 +362,9 @@ class AmoRestApi
         return $this->curlRequest(
             sprintf(self::URL . 'leads/list', $this->subDomain),
             self::METHOD_GET,
-            count($parameters) > 0 ? http_build_query($parameters) : null);
+            count($parameters) > 0 ? http_build_query($parameters) : null,
+            $headers
+        );
     }
 
     /**
@@ -379,11 +376,16 @@ class AmoRestApi
      */
     final public function setCompany($company = null)
     {
-        if (is_null($company)) {
+        if (is_null($company) || empty($company)) {
             return false;
         }
 
-        return $this->curlRequest(sprintf(self::URL . 'company/list', $this->subDomain), self::METHOD_POST, $company);
+        return $this->curlRequest(
+            sprintf(self::URL . 'company/set', $this->subDomain),
+            self::METHOD_POST,
+            json_encode(array('request' => array('contacts' => $company))),
+            array('Content-Type: application/json')
+        );
     }
 
     /**
@@ -434,7 +436,9 @@ class AmoRestApi
         return $this->curlRequest(
             sprintf(self::URL . 'company/list', $this->subDomain),
             self::METHOD_GET,
-            count($parameters) > 0 ? http_build_query($parameters) : null);
+            count($parameters) > 0 ? http_build_query($parameters) : null,
+            $headers
+        );
     }
 
     /**
@@ -446,15 +450,16 @@ class AmoRestApi
      */
     final public function setTasks($tasks = null)
     {
-        if (is_null($tasks)) {
+        if (is_null($tasks) || empty($tasks)) {
             return false;
         }
 
-        //Prepare request
-        $request['request']['tasks'] = $tasks;
-        $requestJson = json_encode($request);
-        $headers = array('Content-Type: application/json');
-        return $this->curlRequest(sprintf(self::URL . 'tasks/set', $this->subDomain), self::METHOD_POST, $requestJson, $headers);
+        return $this->curlRequest(
+            sprintf(self::URL . 'tasks/set', $this->subDomain),
+            self::METHOD_POST,
+            json_encode(array('request' => array('tasks' => $tasks))),
+            array('Content-Type: application/json')
+        );
     }
 
     /**
@@ -474,7 +479,7 @@ class AmoRestApi
         $limitRows = null,
         $limitOffset = null,
         $ids = null,
-        $query = null,
+        $elemenId = null,
         $responsible = null,
         $type = null,
         DateTime $dateModified = null
@@ -496,8 +501,8 @@ class AmoRestApi
             $parameters['id'] = $ids;
         }
 
-        if (is_null($query) === false) {
-            $parameters['query'] = $query;
+        if (is_null($elemenId) === false) {
+            $parameters['element_id'] = $elemenId;
         }
 
         if (is_null($responsible) === false) {
@@ -511,7 +516,9 @@ class AmoRestApi
         return $this->curlRequest(
             sprintf(self::URL . 'tasks/list', $this->subDomain),
             self::METHOD_GET,
-            count($parameters) > 0 ? http_build_query($parameters) : null);
+            count($parameters) > 0 ? http_build_query($parameters) : null,
+            $headers
+        );
     }
 
     /**
@@ -523,14 +530,16 @@ class AmoRestApi
      */
     final public function setNotes($notes = null)
     {
-        if (is_null($notes)) {
+        if (is_null($notes) || empty($notes)) {
             return false;
         }
 
-        $request['request']['notes'] = $notes;
-        $requestJson = json_encode($request);
-        $headers = array('Content-Type: application/json');
-        return $this->curlRequest(sprintf(self::URL . 'notes/set', $this->subDomain), self::METHOD_POST, $requestJson, $headers);
+        return $this->curlRequest(
+            sprintf(self::URL . 'notes/set', $this->subDomain),
+            self::METHOD_POST,
+            json_encode(array('request' => array('notes' => $notes))),
+            array('Content-Type: application/json')
+       );
     }
 
     /**
@@ -549,7 +558,7 @@ class AmoRestApi
         $limitRows = null,
         $limitOffset = null,
         $ids = null,
-        $element_id = null,
+        $elementId = null,
         $type = null,
         DateTime $dateModified = null
     ) {
@@ -570,12 +579,8 @@ class AmoRestApi
             $parameters['id'] = $ids;
         }
 
-        if (is_null($responsible) === false) {
-            $parameters['responsible_user_id'] = $responsible;
-        }
-
-        if (is_null($element_id) === false) {
-            $parameters['element_id'] = $element_id;
+        if (is_null($elementId) === false) {
+            $parameters['element_id'] = $elementId;
         }
 
         if (is_null($type) === false) {
@@ -585,7 +590,9 @@ class AmoRestApi
         return $this->curlRequest(
             sprintf(self::URL . 'notes/list', $this->subDomain),
             self::METHOD_GET,
-            count($parameters) > 0 ? http_build_query($parameters) : null);
+            count($parameters) > 0 ? http_build_query($parameters) : null,
+            $headers
+        );
     }
 
     /**
@@ -597,11 +604,124 @@ class AmoRestApi
      */
     final public function setFields($fields = null)
     {
-        if (is_null($fields)) {
+        if (is_null($fields) || empty($fields)) {
             return false;
         }
 
-        return $this->curlRequest(sprintf(self::URL . 'fields/set', $this->subDomain), self::METHOD_POST, $fields);
+        return $this->curlRequest(
+            sprintf(self::URL . 'fields/set', $this->subDomain),
+            self::METHOD_POST,
+            json_encode(array('request' => array('fields' => $fields))),
+            array('Content-Type: application/json')
+        );
+    }
+
+    /**
+     * Add Calls
+     * @param string $code
+     * @param string $key
+     * @param array $calls
+     * @return array
+     * @throws Exception
+     * @access public
+     * @final
+     * @todo The key is available from technical support.
+     */
+    final public function addCalls($code, $key, $calls)
+    {
+        if (
+            is_null($code) || empty($code) ||
+            is_null($key) || empty($key) ||
+            is_null($calls) || empty($calls)
+        ) {
+            throw new Exception('Incorrect parameters.');
+        }
+
+        return $this->curlRequest(
+            sprintf(
+                'https://%s.amocrm.ru/api/calls/add?%s',
+                $this->subDomain,
+                http_build_query(array('code' => $code, 'key' => $key))
+            ),
+            self::METHOD_POST,
+            json_encode(array('request' => $calls)),
+            array('Content-Type: application/json')
+        );
+    }
+
+    /**
+     * Get accounts custom fields and store in self::customFields
+     * @return mixed
+     * @access public
+     * @final
+     */
+    final public function getCustomFields()
+    {
+        if ($this->customFields) {
+            return $this->customFields;
+        }
+
+        $account = $this->getAccountInfo();
+        $this->customFields = $account['custom_fields'];
+
+        return $this->customFields;
+    }
+
+    /**
+     * Getting custom fields id
+     * @param string $fieldName
+     * @param string $fieldSection (possible values contacts or companies)
+     * @return mixed
+     * @access public
+     * @final
+     */
+    final public function getCustomFieldID($fieldName, $fieldSection = 'contacts')
+    {
+        $customFields = $this->getCustomFields();
+        if (is_array($customFields) && isset($customFields[$fieldSection]) && is_array($customFields[$fieldSection])) {
+            foreach ($customFields[$fieldSection] as $customFieldDetails) {
+                if ($fieldName === $customFieldDetails['code']) {
+                    return $customFieldDetails['id'];
+                }
+            }
+        }
+    }
+
+    /**
+     * Get list of possible leads statuses
+     * @return mixed
+     * @access public
+     * @final
+     */
+    final public function getLeadsStatuses()
+    {
+        if ($this->leadsStatuses) {
+            return $this->leadsStatuses;
+        }
+
+        $account = $this->getAccountInfo();
+        $this->leadsStatuses = $account['leads_statuses'];
+
+        return $this->leadsStatuses;
+    }
+
+    /**
+     * Get lead status id by name
+     * @param string $name
+     * @return mixed
+     * @access public
+     * @final
+     */
+    public function getLeadStatusID($name)
+    {
+        $leadsStatuses = $this->getLeadsStatuses();
+        if (is_array($leadsStatuses)) {
+            foreach ($leadsStatuses as $leadsStatus) {
+                if ($name === $leadsStatus['name']) {
+                    return $leadsStatus['id'];
+                }
+            }
+        }
     }
 
     /**
@@ -611,13 +731,16 @@ class AmoRestApi
      * @param array $parameters
      * @param array $headers
      * @param integer $timeout
+     * @throws Exception
      * @return mixed
-     * @access protected
+     * @access private
      */
-    protected function curlRequest($url, $method = 'GET', $parameters = null, $headers = null, $cookie = '/tmp/cookie.txt', $timeout = 30)
+    private function curlRequest($url, $method = 'GET', $parameters = null, $headers = null, $cookie = '/tmp/cookie.txt', $timeout = 30)
     {
         if ($method == self::METHOD_GET && is_null($parameters) == false) {
             $url .= "?$parameters";
+        } elseif ($method == self::METHOD_POST && !$this->isJson($parameters)) {
+            $parameters = http_build_query($parameters);
         }
 
         // Get curl handler or initiate it
@@ -648,12 +771,6 @@ class AmoRestApi
 
         if ($method == self::METHOD_POST && is_null($parameters) === false) {
             curl_setopt($this->curl, CURLOPT_POST, true);
-
-            //Encode parameters if them already not encoded in json
-            if ($this->isJson($parameters) == false) {
-                $parameters = http_build_query($parameters);
-            }
-
             curl_setopt($this->curl, CURLOPT_POSTFIELDS, $parameters);
         }
 
@@ -667,21 +784,49 @@ class AmoRestApi
             throw new Exception($error, $errno);
         }
 
-        $result = json_decode($response, true);
+        $response = json_decode($response, true);
 
         if ($statusCode >= 400) {
-            throw new Exception($result['message'], $statusCode);
+            throw new Exception($response['message'], $statusCode);
         }
 
-        return isset($result['response']) && count($result['response']) == 0 ? true : $result['response'];
+        $caller = next(debug_backtrace())['function'];
+        if (strpos($caller, 'set') !== false) {
+            $response['response'] = $this->prepareResponse($response['response'], strtolower(ltrim($caller, 'set')));
+        }
+
+        return isset($response['response']) && count($response['response']) == 0 ? true : $response['response'];
+    }
+
+    /**
+     * Pretreatment of response from the server.
+     * @param array $response
+     * @param string $type
+     * @return array
+     * @access private
+     */
+    private function prepareResponse($response, $type)
+    {
+        if (!array_key_exists($type, $response) || !array_key_exists('server_time', $response)) {
+            return $response;
+        }
+
+        if (isset($response[$type]['add']) && is_array($response[$type]['add'])) {
+            foreach ($response[$type]['add'] as $key => $info) {
+                $response[$type]['add'][$key]['last_modified'] = $response['server_time'];
+            }
+        }
+
+        return $response;
     }
 
     /**
      * Check if passed argument is JSON
-     * @param $string
+     * @param string $string
      * @return bool
+     * @access private
      */
-    protected function isJson($string)
+    private function isJson($string)
     {
         if (is_string($string) == false) {
             return false;
@@ -691,74 +836,8 @@ class AmoRestApi
     }
 
     /**
-     * Get accounts custom fields and store in self::customFields
-     * @return mixed
-     */
-    protected function getCustomFields()
-    {
-        if ($this->customFields) {
-            return $this->customFields;
-        }
-
-        $account = $this->getAccountInfo();
-        $this->customFields = $account['custom_fields'];
-
-        return $this->customFields;
-    }
-
-    /**
-     * Getting custom fields id
-     * @param        $fieldName
-     * @param string $fieldSection (possible values contacts or companies)
-     * @return mixed
-     */
-    public function getCustomFieldID($fieldName, $fieldSection = 'contacts')
-    {
-        $customFields = $this->getCustomFields();
-        if (is_array($customFields) && isset($customFields[$fieldSection]) && is_array($customFields[$fieldSection])) {
-            foreach ($customFields[$fieldSection] as $customFieldDetails) {
-                if ($fieldName === $customFieldDetails['code']) {
-                    return $customFieldDetails['id'];
-                }
-            }
-        }
-    }
-
-    /**
-     * Get list of possible leads statuses
-     * @return mixed
-     */
-    public function getLeadsStatuses()
-    {
-        if ($this->leadsStatuses) {
-            return $this->leadsStatuses;
-        }
-
-        $account = $this->getAccountInfo();
-        $this->leadsStatuses = $account['leads_statuses'];
-
-        return $this->leadsStatuses;
-    }
-
-    /**
-     * Get lead status id by name
-     * @param $name
-     * @return mixed
-     */
-    public function getLeadStatusID($name)
-    {
-        $leadsStatuses = $this->getLeadsStatuses();
-        if (is_array($leadsStatuses)) {
-            foreach ($leadsStatuses as $leadsStatus) {
-                if ($name === $leadsStatus['name']) {
-                    return $leadsStatus['id'];
-                }
-            }
-        }
-    }
-
-    /**
      * Do some actions when instance destroyed
+     * @access public
      */
     public function __destruct()
     {
