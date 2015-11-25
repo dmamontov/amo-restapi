@@ -3,7 +3,7 @@
     "description": "PHPClient to work with through AmoCRM Rest API.",
     "type": "library",
     "keywords": ["api", "client", "amocrm", "rest", "crm"],
-    "version": "1.0.2",
+    "version": "1.0.3",
     "license": "BSD-3-Clause",
     "homepage": "http://www.slobel.ru/",
     "authors": [
