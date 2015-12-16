@@ -789,8 +789,9 @@ class AmoRestApi
         if ($statusCode >= 400) {
             throw new Exception($response['message'], $statusCode);
         }
-
-        $caller = next(debug_backtrace())['function'];
+        
+        $backtrace = debug_backtrace();
+        $caller = next($backtrace)['function'];
         if (strpos($caller, 'set') !== false) {
             $response['response'] = $this->prepareResponse($response['response'], strtolower(ltrim($caller, 'set')));
         }
