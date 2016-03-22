@@ -787,7 +787,7 @@ class AmoRestApi
         $response = json_decode($response, true);
 
         if ($statusCode >= 400) {
-            throw new Exception($response['message'], $statusCode);
+            throw new Exception($response['response']['error'], $statusCode);
         }
         
         $backtrace = debug_backtrace();
